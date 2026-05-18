@@ -1,0 +1,1587 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CAO·CRM — Ontology Editor</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;600;700;800&display=swap');
+
+  :root {
+    --bg: #f4f6fa;
+    --surface: #ffffff;
+    --panel: #ffffff;
+    --border: #d0d5e0;
+    --border-light: #b8c0d0;
+    --text: #1a1f2e;
+    --muted: #7a849a;
+    --accent: #3a6ff0;
+    --accent2: #7c5cf0;
+
+    /* entity type colors */
+    --col-work: #f5c842;
+    --col-event: #60c8f0;
+    --col-person: #ffaec0;
+    --col-place: #7fdb87;
+    --col-type: #f99a45;
+    --col-identifier: #f5e27a;
+    --col-physical: #c4906a;
+    --col-string: #b0b8d0;
+    --col-default: #8899cc;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Mono', monospace;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── HEADER ─────────────────────────────────── */
+  header {
+    height: 52px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 16px;
+    flex-shrink: 0;
+    z-index: 100;
+  }
+ 
+  .logo-wrap{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  }
+
+  .app-logo{
+    height:34px;
+    width:auto;
+    object-fit:contain;
+    display:block;
+  }
+  .header-sep { width: 1px; height: 24px; background: var(--border); }
+  .header-info { font-size: 11px; color: var(--muted); }
+  .header-actions { margin-left: auto; display: flex; gap: 8px; }
+  .btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    padding: 5px 12px;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--text);
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn-primary:hover { background: #4a7ff0; color: #fff; }
+
+  /* ── LAYOUT ─────────────────────────────────── */
+  .workspace {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* ── LEFT PANEL ─────────────────────────────── */
+  .sidebar {
+    width: 260px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .sidebar-header {
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .sidebar-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .search-box {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text);
+    outline: none;
+    transition: border-color .15s;
+  }
+  .search-box:focus { border-color: var(--accent); }
+  .search-box::placeholder { color: var(--muted); }
+
+  .entity-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+  }
+  .entity-list::-webkit-scrollbar { width: 4px; }
+  .entity-list::-webkit-scrollbar-track { background: transparent; }
+  .entity-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .entity-group-label {
+    padding: 8px 16px 4px;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-family: 'Syne', sans-serif;
+  }
+
+  .entity-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 16px;
+    cursor: grab;
+    transition: background .1s;
+    user-select: none;
+    border-radius: 0;
+  }
+  .entity-item:hover { background: var(--panel); }
+  .entity-item:active { cursor: grabbing; }
+  .entity-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .entity-item-content { flex: 1; min-width: 0; }
+  .entity-item-name {
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text);
+  }
+  .entity-item-type {
+    font-size: 9px;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 1px;
+  }
+  .entity-count {
+    font-size: 9px;
+    color: var(--muted);
+    background: var(--border);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  /* ── CANVAS AREA ────────────────────────────── */
+  .canvas-area {
+    flex: 1;
+    position: relative;
+    overflow: scroll;
+  }
+  .canvas-area::-webkit-scrollbar { width: 10px; height: 10px; }
+  .canvas-area::-webkit-scrollbar-track { background: var(--bg); }
+  .canvas-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; border: 2px solid var(--bg); }
+  .canvas-area::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+  .canvas-area::-webkit-scrollbar-corner { background: var(--bg); }
+  .canvas-inner {
+    position: relative;
+    width: 3000px;
+    height: 2000px;
+  }
+  .canvas-bg {
+    position: absolute;
+    inset: 0;
+    background-image:
+      radial-gradient(circle at 20% 30%, rgba(58,111,240,0.04) 0%, transparent 60%),
+      radial-gradient(circle at 80% 70%, rgba(124,92,240,0.04) 0%, transparent 60%);
+  }
+  /* dot grid */
+  .canvas-bg::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(circle, var(--border) 1px, transparent 1px);
+    background-size: 24px 24px;
+    opacity: 0.7;
+  }
+
+  #canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* drop hint */
+  .drop-hint {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    gap: 12px;
+    transition: opacity .3s;
+  }
+  .drop-hint.hidden { opacity: 0; }
+  .drop-hint-icon {
+    font-size: 36px;
+    opacity: 0.15;
+  }
+  .drop-hint-text {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+  }
+  .drop-hint-sub {
+    font-size: 11px;
+    color: var(--muted);
+    opacity: 0.6;
+  }
+
+  /* canvas nodes */
+  .canvas-node {
+    position: absolute;
+    min-width: 160px;
+    max-width: 240px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    cursor: move;
+    user-select: none;
+    transition: box-shadow .15s;
+    z-index: 10;
+  }
+  .canvas-node:hover {
+    box-shadow: 0 0 0 1px var(--accent), 0 8px 24px rgba(58,111,240,0.15);
+    z-index: 20;
+  }
+  .canvas-node.selected {
+    box-shadow: 0 0 0 2px var(--accent), 0 12px 32px rgba(58,111,240,0.18);
+    z-index: 30;
+  }
+  .canvas-node.linking-source {
+    box-shadow: 0 0 0 2px #f5c842, 0 12px 40px rgba(245,200,66,0.3);
+  }
+  .node-header {
+    padding: 10px 12px 8px;
+    border-radius: 10px 10px 0 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    cursor: move;
+  }
+  .node-color-bar {
+    width: 3px;
+    height: 100%;
+    min-height: 30px;
+    border-radius: 2px;
+    flex-shrink: 0;
+    align-self: stretch;
+  }
+  .node-header-text { flex: 1; }
+  .node-class {
+    font-size: 9px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    margin-bottom: 2px;
+    letter-spacing: 0.05em;
+  }
+  .node-label {
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.3;
+  }
+  .node-actions {
+    display: flex;
+    gap: 3px;
+    margin-left: auto;
+  }
+  .node-btn {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-size: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all .1s;
+    flex-shrink: 0;
+  }
+  .node-btn:hover { background: var(--border); color: var(--text); }
+  .node-btn.link-btn:hover { border-color: #f5c842; color: #f5c842; }
+  .node-btn.del-btn:hover { border-color: #ff6b6b; color: #ff6b6b; }
+
+  .node-body {
+    padding: 0 12px 10px;
+  }
+  .node-field {
+    margin-top: 6px;
+  }
+  .node-field-label {
+    font-size: 9px;
+    color: var(--muted);
+    margin-bottom: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .node-field-input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 5px 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--text);
+    outline: none;
+    transition: border-color .15s;
+    resize: none;
+  }
+  .node-field-input:focus { border-color: var(--accent); }
+  .node-connector-out {
+    position: absolute;
+    right: -7px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--bg);
+    border: 2px solid var(--accent);
+    cursor: crosshair;
+    transition: all .15s;
+    z-index: 5;
+  }
+  .canvas-node:hover .node-connector-out,
+  .canvas-node.selected .node-connector-out { opacity: 1; }
+
+  /* ── SVG EDGES ──────────────────────────────── */
+  #edges-svg {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 5;
+    overflow: visible;
+  }
+  .edge-path {
+    fill: none;
+    stroke: var(--border-light);
+    stroke-width: 1.5;
+    stroke-dasharray: 4 3;
+    transition: stroke .15s;
+    pointer-events: stroke;
+    cursor: pointer;
+  }
+  .edge-path:hover { stroke: var(--accent); stroke-dasharray: none; }
+  .edge-label-bg { fill: var(--panel); }
+  .edge-label-text {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    fill: var(--muted);
+    text-anchor: middle;
+  }
+  .edge-arrow { fill: var(--border-light); }
+  .temp-edge {
+    stroke: #f5c842;
+    stroke-dasharray: 5 3;
+    stroke-width: 1.5;
+  }
+
+  /* ── RIGHT PANEL ────────────────────────────── */
+  .inspector {
+    width: 260px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: transform .2s;
+  }
+  .inspector.hidden { transform: translateX(260px); }
+  .inspector-header {
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .inspector-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    flex: 1;
+  }
+  .inspector-body { flex: 1; overflow-y: auto; padding: 14px 16px; }
+  .inspector-body::-webkit-scrollbar { width: 4px; }
+  .inspector-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .inspector-section { margin-bottom: 18px; }
+  .inspector-section-title {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+    font-family: 'Syne', sans-serif;
+  }
+  .inspector-field { margin-bottom: 10px; }
+  .inspector-field label {
+    display: block;
+    font-size: 10px;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .inspector-field input,
+  .inspector-field textarea,
+  .inspector-field select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 7px 9px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text);
+    outline: none;
+    transition: border-color .15s;
+    resize: vertical;
+  }
+  .inspector-field input:focus,
+  .inspector-field textarea:focus,
+  .inspector-field select:focus { border-color: var(--accent); }
+  .inspector-field select option { background: var(--panel); }
+
+  .empty-inspector {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 10px;
+    color: var(--muted);
+  }
+  .empty-inspector-icon { font-size: 28px; opacity: 0.3; }
+  .empty-inspector-text { font-size: 11px; text-align: center; line-height: 1.6; }
+
+  /* connection list */
+  .conn-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 10px;
+  }
+  .conn-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .conn-label { color: var(--muted); font-size: 9px; font-style: italic; }
+  .conn-del { margin-left: auto; color: var(--muted); cursor: pointer; font-size: 11px; }
+  .conn-del:hover { color: #ff6b6b; }
+
+  /* ── LINK MODAL ─────────────────────────────── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.hidden { display: none; }
+  .modal {
+    background: var(--panel);
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    padding: 24px;
+    width: 380px;
+    max-width: 90vw;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.15);
+  }
+  .modal-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: var(--text);
+  }
+  .modal-field { margin-bottom: 14px; }
+  .modal-field label { display: block; font-size: 10px; color: var(--muted); margin-bottom: 5px; }
+  .modal-field input, .modal-field select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 9px 11px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text);
+    outline: none;
+  }
+  .modal-field input:focus, .modal-field select:focus { border-color: var(--accent); }
+  .modal-field select option { background: var(--panel); }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+
+  /* ── CONTEXT MENU ───────────────────────────── */
+  .context-menu {
+    position: fixed;
+    background: var(--panel);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    padding: 6px 0;
+    z-index: 999;
+    min-width: 160px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.12);
+  }
+  .context-menu.hidden { display: none; }
+  .ctx-item {
+    padding: 7px 14px;
+    font-size: 11px;
+    cursor: pointer;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background .1s;
+  }
+  .ctx-item:hover { background: var(--border); }
+  .ctx-item.danger { color: #ff6b6b; }
+  .ctx-sep { height: 1px; background: var(--border); margin: 4px 0; }
+
+  /* tooltip */
+  .tooltip {
+    position: fixed;
+    background: var(--panel);
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+    padding: 5px 9px;
+    font-size: 10px;
+    color: var(--muted);
+    z-index: 900;
+    pointer-events: none;
+  }
+  .tooltip.hidden { display: none; }
+
+  /* ── STATUS BAR ─────────────────────────────── */
+  .statusbar {
+    height: 26px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 16px;
+    font-size: 10px;
+    color: var(--muted);
+    flex-shrink: 0;
+  }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #4caf81; }
+
+  /* drag ghost */
+  .drag-ghost {
+    position: fixed;
+    pointer-events: none;
+    z-index: 9999;
+    background: var(--panel);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 11px;
+    color: var(--accent);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    opacity: 0.9;
+    font-family: 'DM Mono', monospace;
+  }
+  .drag-ghost.hidden { display: none; }
+
+  /* link mode cursor */
+  body.linking { cursor: crosshair !important; }
+
+  /* highlight valid drop target */
+  .canvas-node.link-target {
+    box-shadow: 0 0 0 2px #4caf81, 0 8px 32px rgba(76,175,129,0.3);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <!-- <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;">
+    <rect width="32" height="32" rx="8" fill="#3a6ff0"/>
+    <polygon points="16,5 27,11 27,21 16,27 5,21 5,11" fill="none" stroke="white" stroke-width="2"/>
+    <circle cx="16" cy="16" r="4" fill="white"/>
+  </svg> -->
+  <div class="logo-wrap">
+   <img src="ariane.png" alt="ARIANE" class="app-logo"> 
+  <img src="AMISLogoHD.jpg" alt="AMIS" class="app-logo">
+  
+  <div class="logo">
+    CAO·CRM <span>ONTOLOGY EDITOR</span>
+  </div>
+</div>
+  <div class="header-sep"></div>
+  <div class="header-info">Ontology Instantiation Editor</div>
+  <div class="header-actions">
+    <button class="btn" onclick="clearCanvas()">↺ Clear</button>
+    <button class="btn" onclick="exportJSON()">⬇ Export JSON</button>
+    <button class="btn btn-primary" onclick="exportRDF()">⬇ Export RDF/Turtle</button>
+  </div>
+</header>
+
+<div class="workspace">
+
+  <!-- LEFT: Entity palette -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-title">Entity Types</div>
+      <input class="search-box" type="text" placeholder="Search entities…" id="searchInput" oninput="filterEntities(this.value)">
+    </div>
+    <div class="entity-list" id="entityList"></div>
+  </div>
+
+  <!-- CENTER: Canvas -->
+  <div class="canvas-area" id="canvasArea"
+    ondragover="onDragOver(event)"
+    ondrop="onDrop(event)">
+    <div class="canvas-inner" id="canvasInner">
+    <div class="canvas-bg"></div>
+
+    <svg id="edges-svg">
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" class="edge-arrow"/>
+        </marker>
+        <marker id="arrow-hover" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="var(--accent)"/>
+        </marker>
+      </defs>
+    </svg>
+
+    <div id="canvasNodes"></div>
+
+    <div class="drop-hint" id="dropHint">
+      <div class="drop-hint-icon">⬡</div>
+      <div class="drop-hint-text">Drag entities onto the canvas</div>
+      <div class="drop-hint-sub">Then link them and fill in values</div>
+    </div>
+    </div><!-- end canvas-inner -->
+  </div>
+
+  <!-- RIGHT: Inspector -->
+  <div class="inspector" id="inspector">
+    <div class="inspector-header">
+      <div class="inspector-title">Inspector</div>
+      <button class="btn" style="padding:3px 8px; font-size:10px;" onclick="closeInspector()">✕</button>
+    </div>
+    <div class="inspector-body" id="inspectorBody">
+      <div class="empty-inspector">
+        <div class="empty-inspector-icon">⬡</div>
+        <div class="empty-inspector-text">Select a node to<br>inspect and edit its values</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Status bar -->
+<div class="statusbar">
+  <div class="status-dot"></div>
+  <span>Ready</span>
+  <span id="statusNodes">0 nodes</span>
+  <span id="statusEdges">0 connections</span>
+</div>
+
+<!-- Drag ghost -->
+<div class="drag-ghost hidden" id="dragGhost"></div>
+
+<!-- Link modal -->
+<div class="modal-overlay hidden" id="linkModal">
+  <div class="modal">
+    <div class="modal-title">Create Connection</div>
+    <div class="modal-field">
+      <label>From</label>
+      <input type="text" id="linkFrom" readonly>
+    </div>
+    <div class="modal-field">
+      <label>To</label>
+      <input type="text" id="linkTo" readonly>
+    </div>
+    <div class="modal-field">
+      <label>Relationship (predicate)</label>
+      <select id="linkPredicate">
+        <option value="">— custom —</option>
+      </select>
+    </div>
+    <div class="modal-field" id="customPredicateField" style="display:none">
+      <label>Custom predicate</label>
+      <input type="text" id="linkCustomPredicate" placeholder="e.g. P2_has_type">
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmLink()">Connect</button>
+    </div>
+  </div>
+</div>
+
+<!-- Context menu -->
+<div class="context-menu hidden" id="contextMenu">
+  <div class="ctx-item" id="ctxLink" onclick="startLinkFromContext()">⟶ Link to another node</div>
+  <div class="ctx-item" id="ctxDuplicate" onclick="duplicateNode()">⧉ Duplicate</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item danger" id="ctxDelete" onclick="deleteNodeFromContext()">✕ Delete node</div>
+</div>
+
+<!-- Tooltip -->
+<div class="tooltip hidden" id="tooltip"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  ONTOLOGY DATA  (extracted from CAO_CRM_V7_drawio.xml)
+// ═══════════════════════════════════════════════════════════
+const ENTITY_TYPES = [
+  { id: 'F1_Work', label: 'F1_Work', subtype: 'Œuvre artistique', color: '#f5c842', group: 'Works (FRBR)' },
+  { id: 'F2_Expression', label: 'F2_Expression', subtype: 'Création artistique', color: '#f5c842', group: 'Works (FRBR)' },
+  { id: 'F3_Manifestation', label: 'F3_Manifestation', subtype: 'Manifestation', color: '#f5c842', group: 'Works (FRBR)' },
+  { id: 'F5_Item', label: 'F5 Item', subtype: 'Objet physique', color: '#c4906a', group: 'Works (FRBR)' },
+  { id: 'E89_Propositional_Object', label: 'E89_Propositional_Object', subtype: 'Mouvement littéraire/artistique', color: '#f5c842', group: 'Works (FRBR)' },
+  { id: 'E90_Symbolic_Object', label: 'E90_Symbolic_Object', subtype: 'Langues', color: '#f5c842', group: 'Works (FRBR)' },
+
+  { id: 'F27_Work_Creation', label: 'F27_Work_Creation', subtype: 'Création de l\'oeuvre', color: '#60c8f0', group: 'Events' },
+  { id: 'F28_Expression_Creation', label: 'F28_Expression_Creation', subtype: 'Création de l\'expression', color: '#60c8f0', group: 'Events' },
+  { id: 'F30_Manifestation_Creation', label: 'F30_Manifestation_Creation', subtype: 'Création de la manifestation', color: '#60c8f0', group: 'Events' },
+  { id: 'E12_Production', label: 'E12_Production', subtype: 'Production de l\'objet', color: '#60c8f0', group: 'Events' },
+  { id: 'D2_Digitization_Process', label: 'D2_Digitization_Process', subtype: 'Numérisation / Production', color: '#60c8f0', group: 'Events' },
+  { id: 'E7_Activity', label: 'E7_Activity', subtype: 'Activités scientifiques', color: '#60c8f0', group: 'Events' },
+  { id: 'E3_Condition_State', label: 'E3_Condition_State', subtype: 'Etat de conservation', color: '#60c8f0', group: 'Events' },
+  { id: 'E67_Birth', label: 'E67_Birth', subtype: 'Naissance de l\'artiste', color: '#60c8f0', group: 'Events' },
+  { id: 'E69_Death', label: 'E69_Death', subtype: 'Mort de l\'artiste', color: '#60c8f0', group: 'Events' },
+
+  { id: 'E21_Person', label: 'E21_Person', subtype: 'Auteur / Personne', color: '#ffaec0', group: 'Actors' },
+  { id: 'E39_Actor', label: 'E39_Actor', subtype: 'Pers. physique ou morale', color: '#ffaec0', group: 'Actors' },
+
+  { id: 'E53_Place', label: 'E53_Place', subtype: 'Lieu', color: '#7fdb87', group: 'Places' },
+
+  { id: 'E52_Time_Span', label: 'E52_Time-Span', subtype: 'Période / Date', color: '#86c8d8', group: 'Time' },
+
+  { id: 'E30_Right', label: 'E30_Right', subtype: 'Droits', color: '#f5c842', group: 'Rights' },
+
+  { id: 'E55_Type', label: 'E55_Type', subtype: 'Type / Classification', color: '#f99a45', group: 'Types & Identifiers' },
+  { id: 'E42_Identifier', label: 'E42_Identifier', subtype: 'Identifiant', color: '#f5e27a', group: 'Types & Identifiers' },
+  { id: 'E35_Title', label: 'E35_Title', subtype: 'Titre', color: '#f5e27a', group: 'Types & Identifiers' },
+  { id: 'E56_Language', label: 'E56_Language', subtype: 'Langage original', color: '#f99a45', group: 'Types & Identifiers' },
+  { id: 'E57_Material', label: 'E57_Material', subtype: 'Matériaux', color: '#f99a45', group: 'Types & Identifiers' },
+
+  { id: 'E54_Dimension', label: 'E54_Dimension', subtype: 'Dimension', color: '#b0b8d0', group: 'Attributes' },
+  { id: 'E60_Number', label: 'E60_Number', subtype: 'Nombre', color: '#b0b8d0', group: 'Attributes' },
+  { id: 'E62_String', label: 'E62_String', subtype: 'Description / Texte', color: '#b0b8d0', group: 'Attributes' },
+
+  { id: 'D1_Digital_Object', label: 'D1_Digital_Object', subtype: 'Objet numérique', color: '#f5c842', group: 'Digital' },
+  { id: 'D13_Digital_Carrier', label: 'D13_Digital_Information_Carrier', subtype: 'Entrepôt de données', color: '#b0b8d0', group: 'Digital' },
+
+  { id: 'E18_Physical_Thing', label: 'E18_Physical_Thing', subtype: 'Autre objet physique', color: '#c4906a', group: 'Physical' },
+  { id: 'E71_Human_Made_Thing', label: 'E71_Human-Made_Thing', subtype: 'Objet source', color: '#c4906a', group: 'Physical' },
+];
+
+const KNOWN_PREDICATES = [
+  'P1_is_identified_by', 'P2_has_type', 'P3_has_note', 'P4_has_time-span',
+  'P7_took_place_at', 'P14_carried_out_by', 'P16_used_specific_object',
+  'P19_was_intended_use_of', 'P20_has_specific_purpose', 'P21_has_general_purpose',
+  'P43_has_dimension', 'P44_has_condition', 'P45_consists_of', 'P46_is_composed_of',
+  'P82_at_some_time_within', 'P86_falls_within', 'P90_has_value',
+  'P98i_was_born', 'P100i_died_in', 'P104_is_subject_to', 'P106_is_composed_of',
+  'P108_has_produced', 'P150_defines_typical_parts_of',
+  'R3_is_realised_in', 'R4_embodies', 'R16_created', 'R17_created',
+  'R24_created', 'R27_materialized',
+  'L11_had_output', 'L19_stores', 'L61_contains_value_set_of',
+  'skos:prefLabel', 'rdfs:label', 'rdfs:type',
+  'P67i_is_referred_to_by', 'P82a_begin_of_the_begin', 'P82b_end_of_the_end',
+];
+
+// Entity fields by type
+const ENTITY_FIELDS = {
+  'F1_Work': [
+    { key: 'uri', label: 'URI / IRI', type: 'text', placeholder: 'http://example.org/work/001' },
+    { key: 'title', label: 'Titre de l\'œuvre', type: 'text', placeholder: 'ex: Manuscrit de Paris' },
+    { key: 'note', label: 'Note', type: 'textarea', placeholder: '' },
+  ],
+  'F2_Expression': [
+    { key: 'uri', label: 'URI / IRI', type: 'text' },
+    { key: 'label', label: 'Label', type: 'text', placeholder: 'ex: Édition de 1842' },
+  ],
+  'F3_Manifestation': [
+    { key: 'uri', label: 'URI / IRI', type: 'text' },
+    { key: 'label', label: 'Titre de la manifestation', type: 'text' },
+    { key: 'type', label: 'Type de manifestation', type: 'text', placeholder: 'ex: Livre imprimé' },
+  ],
+  'F5_Item': [
+    { key: 'uri', label: 'URI / IRI', type: 'text' },
+    { key: 'label', label: 'Identifiant', type: 'text', placeholder: 'ex: cote BnF' },
+    { key: 'mode', label: 'Mode d\'agencement', type: 'text' },
+    { key: 'note', label: 'Note / Description', type: 'textarea' },
+  ],
+  'E21_Person': [
+    { key: 'uri', label: 'URI / IRI', type: 'text' },
+    { key: 'name', label: 'Nom', type: 'text', placeholder: 'ex: Victor Hugo' },
+    { key: 'role', label: 'Rôle', type: 'text', placeholder: 'ex: Auteur, Traducteur' },
+  ],
+  'E39_Actor': [
+    { key: 'uri', label: 'URI / IRI', type: 'text' },
+    { key: 'name', label: 'Nom', type: 'text' },
+  ],
+  'E53_Place': [
+    { key: 'uri', label: 'URI / IRI', type: 'text' },
+    { key: 'label', label: 'Lieu', type: 'text', placeholder: 'ex: Paris, France' },
+    { key: 'geoname', label: 'Lien GeoName', type: 'text', placeholder: 'https://www.geonames.org/…' },
+  ],
+  'E52_Time_Span': [
+    { key: 'begin', label: 'Début (P82a)', type: 'text', placeholder: 'ex: 1842' },
+    { key: 'end', label: 'Fin (P82b)', type: 'text', placeholder: 'ex: 1845' },
+    { key: 'label', label: 'Libellé', type: 'text', placeholder: 'ex: ca. 1842–1845' },
+  ],
+  'E30_Right': [
+    { key: 'uri', label: 'URI / IRI', type: 'text' },
+    { key: 'type', label: 'Type de droit', type: 'text', placeholder: 'ex: Droits d\'auteur' },
+    { key: 'holder', label: 'Titulaire', type: 'text' },
+  ],
+  'E55_Type': [
+    { key: 'uri', label: 'URI / IRI', type: 'text' },
+    { key: 'label', label: 'Valeur du type', type: 'text', placeholder: 'ex: Manuscrit' },
+  ],
+  'E42_Identifier': [
+    { key: 'value', label: 'Valeur', type: 'text', placeholder: 'ex: ARK, ISBN…' },
+    { key: 'type', label: 'Type d\'identifiant', type: 'text' },
+  ],
+  'E35_Title': [
+    { key: 'value', label: 'Titre', type: 'text' },
+    { key: 'type', label: 'Type de titre', type: 'text', placeholder: 'ex: Titre forgé' },
+  ],
+  'E54_Dimension': [
+    { key: 'value', label: 'Valeur (P90)', type: 'text', placeholder: 'ex: 32' },
+    { key: 'unit', label: 'Unité', type: 'text', placeholder: 'ex: cm, px' },
+    { key: 'type', label: 'Type de dimension', type: 'text', placeholder: 'ex: Hauteur' },
+  ],
+  'E62_String': [
+    { key: 'value', label: 'Contenu', type: 'textarea', placeholder: 'Saisir le texte…' },
+    { key: 'lang', label: 'Langue', type: 'text', placeholder: 'ex: fr, en' },
+  ],
+  'D1_Digital_Object': [
+    { key: 'uri', label: 'URI / IRI', type: 'text' },
+    { key: 'format', label: 'Format', type: 'text', placeholder: 'ex: TIFF, JPEG2000' },
+    { key: 'resolution', label: 'Résolution', type: 'text' },
+  ],
+  'D2_Digitization_Process': [
+    { key: 'uri', label: 'URI / IRI', type: 'text' },
+    { key: 'type', label: 'Type de processus', type: 'text' },
+    { key: 'note', label: 'Note', type: 'textarea' },
+  ],
+  '_default': [
+    { key: 'uri', label: 'URI / IRI', type: 'text' },
+    { key: 'label', label: 'Label', type: 'text' },
+    { key: 'note', label: 'Note', type: 'textarea' },
+  ]
+};
+
+// ═══════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════
+let nodes = {};   // id -> { id, typeId, x, y, values:{} }
+let edges = [];   // { id, from, to, predicate }
+let nodeCounter = 0;
+let edgeCounter = 0;
+let selectedNodeId = null;
+let linkingFrom = null;  // node id we're linking FROM
+let contextNodeId = null;
+let pendingLinkFrom = null;
+let pendingLinkTo = null;
+
+// drag state
+let dragging = null; // { nodeId, ox, oy }
+let dragItem = null; // sidebar drag
+
+// ═══════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════
+function init() {
+  renderEntityList(ENTITY_TYPES);
+  populatePredicate();
+  document.addEventListener('mousemove', onMouseMove);
+  document.addEventListener('mouseup', onMouseUp);
+  document.addEventListener('keydown', onKeyDown);
+  document.getElementById('canvasArea').addEventListener('click', onCanvasClick);
+  document.getElementById('linkPredicate').addEventListener('change', function() {
+    document.getElementById('customPredicateField').style.display =
+      this.value === '' ? 'block' : 'none';
+  });
+}
+
+function populatePredicate() {
+  const sel = document.getElementById('linkPredicate');
+  KNOWN_PREDICATES.forEach(p => {
+    const o = document.createElement('option');
+    o.value = p; o.textContent = p;
+    sel.appendChild(o);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  ENTITY LIST
+// ═══════════════════════════════════════════════════════════
+function renderEntityList(list) {
+  const el = document.getElementById('entityList');
+  el.innerHTML = '';
+  const groups = {};
+  list.forEach(e => {
+    if (!groups[e.group]) groups[e.group] = [];
+    groups[e.group].push(e);
+  });
+  for (const [group, items] of Object.entries(groups)) {
+    const gl = document.createElement('div');
+    gl.className = 'entity-group-label';
+    gl.textContent = group;
+    el.appendChild(gl);
+    items.forEach(e => {
+      const div = document.createElement('div');
+      div.className = 'entity-item';
+      div.draggable = true;
+      div.dataset.typeId = e.id;
+      div.innerHTML = `
+        <div class="entity-dot" style="background:${e.color}"></div>
+        <div class="entity-item-content">
+          <div class="entity-item-name">${e.label}</div>
+          <div class="entity-item-type">${e.subtype}</div>
+        </div>
+      `;
+      div.addEventListener('dragstart', onSidebarDragStart);
+      el.appendChild(div);
+    });
+  }
+}
+
+function filterEntities(query) {
+  const q = query.toLowerCase();
+  const filtered = q
+    ? ENTITY_TYPES.filter(e =>
+        e.label.toLowerCase().includes(q) ||
+        e.subtype.toLowerCase().includes(q) ||
+        e.group.toLowerCase().includes(q))
+    : ENTITY_TYPES;
+  renderEntityList(filtered);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  DRAG FROM SIDEBAR
+// ═══════════════════════════════════════════════════════════
+function onSidebarDragStart(e) {
+  dragItem = e.currentTarget.dataset.typeId;
+  e.dataTransfer.setData('text/plain', dragItem);
+  const ghost = document.getElementById('dragGhost');
+  const et = ENTITY_TYPES.find(t => t.id === dragItem);
+  ghost.textContent = et ? et.label : dragItem;
+  ghost.classList.remove('hidden');
+}
+
+function onDragOver(e) {
+  e.preventDefault();
+}
+
+function onDrop(e) {
+  e.preventDefault();
+  const typeId = e.dataTransfer.getData('text/plain') || dragItem;
+  if (!typeId) return;
+  const area = document.getElementById('canvasArea');
+  const rect = area.getBoundingClientRect();
+  const x = e.clientX - rect.left + area.scrollLeft - 80;
+  const y = e.clientY - rect.top + area.scrollTop - 30;
+  createNode(typeId, x, y);
+  document.getElementById('dragGhost').classList.add('hidden');
+  dragItem = null;
+}
+
+document.addEventListener('dragend', () => {
+  document.getElementById('dragGhost').classList.add('hidden');
+});
+
+// ═══════════════════════════════════════════════════════════
+//  NODE CREATION
+// ═══════════════════════════════════════════════════════════
+function createNode(typeId, x, y) {
+  const id = 'node_' + (++nodeCounter);
+  const et = ENTITY_TYPES.find(t => t.id === typeId);
+  nodes[id] = { id, typeId, x, y, values: {} };
+  renderNode(id);
+  updateDropHint();
+  updateStatus();
+  selectNode(id);
+  return id;
+}
+
+function getEntityType(typeId) {
+  return ENTITY_TYPES.find(t => t.id === typeId) || { label: typeId, subtype: '', color: '#8899cc' };
+}
+
+function renderNode(id) {
+  const node = nodes[id];
+  const et = getEntityType(node.typeId);
+  const existing = document.getElementById('cn_' + id);
+  if (existing) existing.remove();
+
+  const div = document.createElement('div');
+  div.className = 'canvas-node';
+  div.id = 'cn_' + id;
+  div.style.left = node.x + 'px';
+  div.style.top = node.y + 'px';
+
+  const fields = ENTITY_FIELDS[node.typeId] || ENTITY_FIELDS['_default'];
+  const fieldsHTML = fields.map(f => `
+    <div class="node-field">
+      <div class="node-field-label">${f.label}</div>
+      ${f.type === 'textarea'
+        ? `<textarea class="node-field-input" rows="2" data-field="${f.key}" onchange="updateNodeValue('${id}','${f.key}',this.value)" placeholder="${f.placeholder||''}">${node.values[f.key]||''}</textarea>`
+        : `<input type="text" class="node-field-input" data-field="${f.key}" value="${node.values[f.key]||''}" onchange="updateNodeValue('${id}','${f.key}',this.value)" placeholder="${f.placeholder||''}">`
+      }
+    </div>
+  `).join('');
+
+  div.innerHTML = `
+    <div class="node-header" onmousedown="startDragNode(event,'${id}')">
+      <div class="node-color-bar" style="background:${et.color}"></div>
+      <div class="node-header-text">
+        <div class="node-class">${et.label}</div>
+        <div class="node-label">${et.subtype || et.label}</div>
+      </div>
+      <div class="node-actions">
+        <button class="node-btn link-btn" title="Link to another node" onclick="startLinkMode('${id}',event)">⟶</button>
+        <button class="node-btn del-btn" title="Delete" onclick="deleteNode('${id}')">✕</button>
+      </div>
+    </div>
+    <div class="node-body">${fieldsHTML}</div>
+  `;
+
+  div.addEventListener('click', (e) => {
+    if (!e.defaultPrevented) selectNode(id);
+  });
+  div.addEventListener('contextmenu', (e) => { e.preventDefault(); showContextMenu(e, id); });
+
+  // If in link mode, clicking this node completes the link
+  div.addEventListener('mouseup', (e) => {
+    if (linkingFrom && linkingFrom !== id) {
+      e.stopPropagation();
+      completeLinkMode(id);
+    }
+  });
+
+  document.getElementById('canvasNodes').appendChild(div);
+}
+
+function updateNodeValue(id, field, value) {
+  if (nodes[id]) {
+    nodes[id].values[field] = value;
+    if (selectedNodeId === id) renderInspector(id);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  DRAGGING NODES
+// ═══════════════════════════════════════════════════════════
+function startDragNode(e, id) {
+  if (linkingFrom) return;
+  if (e.button !== 0) return;
+  e.preventDefault();
+  selectNode(id);
+  const area = document.getElementById('canvasArea');
+  const areaRect = area.getBoundingClientRect();
+  const node = nodes[id];
+  dragging = { nodeId: id, ox: e.clientX - areaRect.left + area.scrollLeft - node.x, oy: e.clientY - areaRect.top + area.scrollTop - node.y };
+}
+
+function onMouseMove(e) {
+  if (dragging) {
+    const area = document.getElementById('canvasArea');
+    const areaRect = area.getBoundingClientRect();
+    const x = e.clientX - areaRect.left + area.scrollLeft - dragging.ox;
+    const y = e.clientY - areaRect.top + area.scrollTop - dragging.oy;
+    nodes[dragging.nodeId].x = x;
+    nodes[dragging.nodeId].y = y;
+    const div = document.getElementById('cn_' + dragging.nodeId);
+    if (div) { div.style.left = x + 'px'; div.style.top = y + 'px'; }
+    redrawEdges();
+  }
+  if (linkingFrom) {
+    // draw temp edge
+    const area = document.getElementById('canvasArea').getBoundingClientRect();
+    drawTempEdge(e.clientX - area.left, e.clientY - area.top);
+    // highlight valid targets
+    Object.keys(nodes).forEach(nid => {
+      const el = document.getElementById('cn_' + nid);
+      if (!el) return;
+      if (nid !== linkingFrom) el.classList.add('link-target');
+    });
+  }
+}
+
+function onMouseUp(e) {
+  if (dragging) { dragging = null; }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  LINK MODE
+// ═══════════════════════════════════════════════════════════
+function startLinkMode(id, e) {
+  e && e.stopPropagation();
+  linkingFrom = id;
+  document.body.classList.add('linking');
+  document.getElementById('cn_' + id).classList.add('linking-source');
+  setStatus('Click on a target node to create a connection — ESC to cancel');
+}
+
+function completeLinkMode(targetId) {
+  if (!linkingFrom || linkingFrom === targetId) {
+    cancelLinkMode();
+    return;
+  }
+  pendingLinkFrom = linkingFrom;
+  pendingLinkTo = targetId;
+  cancelLinkMode();
+  showLinkModal(pendingLinkFrom, pendingLinkTo);
+}
+
+function cancelLinkMode() {
+  if (linkingFrom) {
+    const el = document.getElementById('cn_' + linkingFrom);
+    if (el) el.classList.remove('linking-source');
+  }
+  linkingFrom = null;
+  document.body.classList.remove('linking');
+  Object.values(nodes).forEach(n => {
+    const el = document.getElementById('cn_' + n.id);
+    if (el) el.classList.remove('link-target');
+  });
+  removeTempEdge();
+  setStatus('Ready');
+}
+
+function drawTempEdge(mx, my) {
+  let temp = document.getElementById('temp-edge');
+  if (!temp) {
+    const svg = document.getElementById('edges-svg');
+    temp = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    temp.id = 'temp-edge';
+    temp.setAttribute('class', 'edge-path temp-edge');
+    svg.appendChild(temp);
+  }
+  const src = getNodeCenter(linkingFrom);
+  temp.setAttribute('d', `M${src.x},${src.y} L${mx},${my}`);
+}
+
+function removeTempEdge() {
+  const t = document.getElementById('temp-edge');
+  if (t) t.remove();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  LINK MODAL
+// ═══════════════════════════════════════════════════════════
+function showLinkModal(fromId, toId) {
+  const fromNode = nodes[fromId];
+  const toNode = nodes[toId];
+  const fromEt = getEntityType(fromNode.typeId);
+  const toEt = getEntityType(toNode.typeId);
+  document.getElementById('linkFrom').value = `${fromEt.label} — ${fromNode.values.label || fromNode.values.name || fromNode.values.uri || fromId}`;
+  document.getElementById('linkTo').value = `${toEt.label} — ${toNode.values.label || toNode.values.name || toNode.values.uri || toId}`;
+  document.getElementById('linkPredicate').value = '';
+  document.getElementById('linkCustomPredicate').value = '';
+  document.getElementById('customPredicateField').style.display = 'block';
+  document.getElementById('linkModal').classList.remove('hidden');
+}
+
+function closeModal() {
+  document.getElementById('linkModal').classList.add('hidden');
+  pendingLinkFrom = null;
+  pendingLinkTo = null;
+}
+
+function confirmLink() {
+  let pred = document.getElementById('linkPredicate').value;
+  if (!pred) pred = document.getElementById('linkCustomPredicate').value.trim();
+  if (!pred) { alert('Please enter a predicate/relationship.'); return; }
+  if (!pendingLinkFrom || !pendingLinkTo) return;
+  addEdge(pendingLinkFrom, pendingLinkTo, pred);
+  closeModal();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  EDGES
+// ═══════════════════════════════════════════════════════════
+function addEdge(fromId, toId, predicate) {
+  const id = 'edge_' + (++edgeCounter);
+  edges.push({ id, from: fromId, to: toId, predicate });
+  redrawEdges();
+  updateStatus();
+  if (selectedNodeId) renderInspector(selectedNodeId);
+}
+
+function deleteEdge(id) {
+  edges = edges.filter(e => e.id !== id);
+  redrawEdges();
+  updateStatus();
+  if (selectedNodeId) renderInspector(selectedNodeId);
+}
+
+function getNodeCenter(id) {
+  const el = document.getElementById('cn_' + id);
+  if (!el) return { x: 0, y: 0 };
+  const area = document.getElementById('canvasArea').getBoundingClientRect();
+  const r = el.getBoundingClientRect();
+  return {
+    x: r.left - area.left + r.width / 2,
+    y: r.top - area.top + r.height / 2
+  };
+}
+
+function redrawEdges() {
+  const svg = document.getElementById('edges-svg');
+  // Remove all except temp
+  Array.from(svg.children).forEach(c => {
+    if (c.id !== 'temp-edge' && c.tagName !== 'defs') c.remove();
+  });
+
+  edges.forEach(edge => {
+    const src = getNodeCenter(edge.from);
+    const tgt = getNodeCenter(edge.to);
+    const dx = tgt.x - src.x;
+    const dy = tgt.y - src.y;
+    const mx = (src.x + tgt.x) / 2;
+    const my = (src.y + tgt.y) / 2;
+    const curve = Math.min(60, Math.sqrt(dx*dx+dy*dy) * 0.25);
+    const perp = dy !== 0 || dx !== 0
+      ? { x: -dy / Math.sqrt(dx*dx+dy*dy) * curve, y: dx / Math.sqrt(dx*dx+dy*dy) * curve }
+      : { x: 0, y: 0 };
+    const cpx = mx + perp.x;
+    const cpy = my + perp.y;
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('class', 'edge-path');
+    path.setAttribute('d', `M${src.x},${src.y} Q${cpx},${cpy} ${tgt.x},${tgt.y}`);
+    path.setAttribute('marker-end', 'url(#arrow)');
+    path.setAttribute('data-edge', edge.id);
+    path.addEventListener('click', () => {
+      if (confirm(`Delete connection "${edge.predicate}"?`)) deleteEdge(edge.id);
+    });
+    svg.appendChild(path);
+
+    // Label
+    const label = edge.predicate;
+    if (label) {
+      const lx = cpx, ly = cpy;
+      const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      const textW = Math.min(label.length * 5.5, 180);
+      bg.setAttribute('x', lx - textW/2 - 3); bg.setAttribute('y', ly - 10);
+      bg.setAttribute('width', textW + 6); bg.setAttribute('height', 14);
+      bg.setAttribute('rx', '3'); bg.setAttribute('class', 'edge-label-bg');
+      bg.setAttribute('opacity', '0.85');
+      svg.appendChild(bg);
+
+      const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      txt.setAttribute('x', lx); txt.setAttribute('y', ly + 1);
+      txt.setAttribute('class', 'edge-label-text');
+      txt.textContent = label.length > 30 ? label.slice(0, 28) + '…' : label;
+      svg.appendChild(txt);
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SELECTION & INSPECTOR
+// ═══════════════════════════════════════════════════════════
+function selectNode(id) {
+  Object.keys(nodes).forEach(nid => {
+    const el = document.getElementById('cn_' + nid);
+    if (el) el.classList.remove('selected');
+  });
+  selectedNodeId = id;
+  if (id) {
+    const el = document.getElementById('cn_' + id);
+    if (el) el.classList.add('selected');
+    renderInspector(id);
+  }
+}
+
+function onCanvasClick(e) {
+  if (linkingFrom) { cancelLinkMode(); return; }
+  if (e.target === document.getElementById('canvasArea') ||
+      e.target.closest('.canvas-bg') ||
+      e.target === document.getElementById('canvasNodes')) {
+    selectNode(null);
+    renderInspector(null);
+  }
+  hideContextMenu();
+}
+
+function closeInspector() {
+  selectNode(null);
+  renderInspector(null);
+}
+
+function renderInspector(id) {
+  const body = document.getElementById('inspectorBody');
+  if (!id || !nodes[id]) {
+    body.innerHTML = `<div class="empty-inspector">
+      <div class="empty-inspector-icon">⬡</div>
+      <div class="empty-inspector-text">Select a node to<br>inspect and edit its values</div>
+    </div>`;
+    return;
+  }
+  const node = nodes[id];
+  const et = getEntityType(node.typeId);
+  const fields = ENTITY_FIELDS[node.typeId] || ENTITY_FIELDS['_default'];
+  const nodeEdges = edges.filter(e => e.from === id || e.to === id);
+
+  let connectionsHTML = nodeEdges.length
+    ? nodeEdges.map(e => {
+        const other = e.from === id ? e.to : e.from;
+        const dir = e.from === id ? '→' : '←';
+        const oet = getEntityType(nodes[other]?.typeId || '');
+        const oLabel = nodes[other]?.values?.label || nodes[other]?.values?.name || nodes[other]?.id || other;
+        return `<div class="conn-item">
+          <div class="conn-dot" style="background:${oet.color||'#888'}"></div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${dir} ${oet.label || ''}</div>
+            <div class="conn-label">${e.predicate}</div>
+          </div>
+          <div class="conn-del" onclick="deleteEdge('${e.id}')">✕</div>
+        </div>`;
+      }).join('')
+    : '<div style="font-size:10px;color:var(--muted)">No connections yet</div>';
+
+  body.innerHTML = `
+    <div class="inspector-section">
+      <div class="inspector-section-title" style="color:${et.color}">${et.label}</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">${et.subtype}</div>
+      ${fields.map(f => `
+        <div class="inspector-field">
+          <label>${f.label}</label>
+          ${f.type === 'textarea'
+            ? `<textarea rows="3" placeholder="${f.placeholder||''}" onchange="updateNodeValue('${id}','${f.key}',this.value);rerenderNode('${id}')">${node.values[f.key]||''}</textarea>`
+            : `<input type="text" value="${node.values[f.key]||''}" placeholder="${f.placeholder||''}" onchange="updateNodeValue('${id}','${f.key}',this.value);rerenderNode('${id}')">`
+          }
+        </div>
+      `).join('')}
+    </div>
+    <div class="inspector-section">
+      <div class="inspector-section-title">Connections</div>
+      ${connectionsHTML}
+      <button class="btn" style="margin-top:8px;width:100%" onclick="startLinkMode('${id}')">+ Add connection</button>
+    </div>
+    <div class="inspector-section">
+      <div class="inspector-section-title">Actions</div>
+      <button class="btn" style="width:100%;margin-bottom:6px" onclick="duplicateNodeById('${id}')">⧉ Duplicate node</button>
+      <button class="btn" style="width:100%;color:#ff6b6b;border-color:#ff6b6b" onclick="deleteNode('${id}')">✕ Delete node</button>
+    </div>
+  `;
+}
+
+function rerenderNode(id) {
+  renderNode(id);
+  if (selectedNodeId === id) {
+    document.getElementById('cn_' + id).classList.add('selected');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  DELETE / DUPLICATE
+// ═══════════════════════════════════════════════════════════
+function deleteNode(id) {
+  edges = edges.filter(e => e.from !== id && e.to !== id);
+  delete nodes[id];
+  const el = document.getElementById('cn_' + id);
+  if (el) el.remove();
+  if (selectedNodeId === id) { selectedNodeId = null; renderInspector(null); }
+  redrawEdges();
+  updateDropHint();
+  updateStatus();
+}
+
+function duplicateNodeById(id) {
+  if (!nodes[id]) return;
+  const n = nodes[id];
+  const newId = createNode(n.typeId, n.x + 30, n.y + 30);
+  nodes[newId].values = { ...n.values };
+  rerenderNode(newId);
+  selectNode(newId);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CONTEXT MENU
+// ═══════════════════════════════════════════════════════════
+function showContextMenu(e, id) {
+  contextNodeId = id;
+  selectNode(id);
+  const cm = document.getElementById('contextMenu');
+  cm.style.left = e.clientX + 'px';
+  cm.style.top = e.clientY + 'px';
+  cm.classList.remove('hidden');
+}
+function hideContextMenu() {
+  document.getElementById('contextMenu').classList.add('hidden');
+  contextNodeId = null;
+}
+function startLinkFromContext() {
+  hideContextMenu();
+  if (contextNodeId) startLinkMode(contextNodeId);
+}
+function duplicateNode() {
+  if (contextNodeId) duplicateNodeById(contextNodeId);
+  hideContextMenu();
+}
+function deleteNodeFromContext() {
+  if (contextNodeId) deleteNode(contextNodeId);
+  hideContextMenu();
+}
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.context-menu')) hideContextMenu();
+});
+
+// ═══════════════════════════════════════════════════════════
+//  KEYBOARD
+// ═══════════════════════════════════════════════════════════
+function onKeyDown(e) {
+  if (e.key === 'Escape') {
+    if (linkingFrom) { cancelLinkMode(); return; }
+    if (selectedNodeId) { selectNode(null); renderInspector(null); }
+  }
+  if ((e.key === 'Delete' || e.key === 'Backspace') &&
+       selectedNodeId &&
+       !e.target.matches('input,textarea')) {
+    deleteNode(selectedNodeId);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  STATUS / UI helpers
+// ═══════════════════════════════════════════════════════════
+function updateDropHint() {
+  const hint = document.getElementById('dropHint');
+  if (Object.keys(nodes).length > 0) hint.classList.add('hidden');
+  else hint.classList.remove('hidden');
+}
+function updateStatus() {
+  document.getElementById('statusNodes').textContent = Object.keys(nodes).length + ' nodes';
+  document.getElementById('statusEdges').textContent = edges.length + ' connections';
+}
+function setStatus(msg) {
+  // just log for now; could update status bar
+}
+function clearCanvas() {
+  if (!confirm('Clear all nodes and connections?')) return;
+  Object.keys(nodes).forEach(id => {
+    const el = document.getElementById('cn_' + id);
+    if (el) el.remove();
+  });
+  nodes = {}; edges = [];
+  document.getElementById('edges-svg').querySelectorAll(':not(defs)').forEach(e => e.remove());
+  selectedNodeId = null;
+  renderInspector(null);
+  updateDropHint();
+  updateStatus();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  EXPORT
+// ═══════════════════════════════════════════════════════════
+function exportJSON() {
+  const data = {
+    nodes: Object.values(nodes).map(n => ({
+      id: n.id,
+      type: getEntityType(n.typeId).label,
+      subtype: getEntityType(n.typeId).subtype,
+      values: n.values
+    })),
+    edges: edges.map(e => ({
+      from: e.from,
+      to: e.to,
+      predicate: e.predicate
+    }))
+  };
+  download(JSON.stringify(data, null, 2), 'ontology_instance.json', 'application/json');
+}
+
+function exportRDF() {
+  const prefixes = [
+    '@prefix crm: <http://www.cidoc-crm.org/cidoc-crm/> .',
+    '@prefix frbr: <http://iflastandards.info/ns/fr/frbr/frbrer/> .',
+    '@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .',
+    '@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .',
+    '@prefix ex: <http://example.org/instance/> .',
+    '',
+  ];
+  const triples = [];
+  Object.values(nodes).forEach(n => {
+    const et = getEntityType(n.typeId);
+    triples.push(`ex:${n.id}`);
+    triples.push(`    a crm:${et.label} ;`);
+    Object.entries(n.values).forEach(([k, v]) => {
+      if (v) triples.push(`    rdfs:${k} "${v.replace(/"/g,'\\\"')}"^^xsd:string ;`);
+    });
+    triples.push('    .');
+    triples.push('');
+  });
+  edges.forEach(e => {
+    const pred = e.predicate.includes(':') ? e.predicate : `crm:${e.predicate}`;
+    triples.push(`ex:${e.from} ${pred} ex:${e.to} .`);
+  });
+  download([...prefixes, ...triples].join('\n'), 'ontology_instance.ttl', 'text/turtle');
+}
+
+function download(content, filename, mime) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([content], { type: mime }));
+  a.download = filename;
+  a.click();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  START
+// ═══════════════════════════════════════════════════════════
+init();
+</script>
+</body>
+</html>
